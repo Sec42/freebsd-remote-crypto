@@ -1,0 +1,7 @@
+mkdir /tmp/etc
+mdmfs -s32m -S md /tmp/etc
+mount -t unionfs /tmp/etc /etc
+passwd root
+#dhclient ...
+sed -i '' -e 's/^#\(PermitRootLogin\).*/\1 yes/' /etc/ssh/sshd_config
+service sshd onestart

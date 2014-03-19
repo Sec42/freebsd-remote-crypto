@@ -1,0 +1,108 @@
+set -x
+
+geom=ada0
+base=/mnt
+ufsdir=/xboot
+
+gpart destroy -F $geom
+gpart create -s gpt $geom
+gpart add -b 34 -s 64k  -t freebsd-boot $geom
+# 512 is absolute minimum, the kernel is so large.
+ufs=`gpart add -s 768M -t freebsd-ufs $geom | awk '{print $1}'`
+swap=`gpart add -s 1G -t freebsd-swap $geom | awk '{print $1}'`
+eli=`gpart add -t freebsd-zfs $geom | awk '{print $1}'`
+
+geli init -s 4096 $eli
+geli attach $eli
+
+gpart bootcode -b /boot/pmbr -p /boot/gptboot -i 1 $geom
+
+newfs -U -j $ufs
+
+pool=tank
+zpool create -f -m none -o altroot=$base -o cachefile=/tmp/zpool.cache $pool ${eli}.eli
+
+root=$pool/root
+zfs create -o mountpoint=/                               $root
+zfs create                                               $root/usr
+zfs create -o compression=lzjb             -o setuid=off $root/usr/ports
+zfs create -o compression=off  -o exec=off -o setuid=off $root/usr/ports/distfiles
+zfs create -o compression=off  -o exec=off -o setuid=off $root/usr/ports/packages
+zfs create -o compression=lzjb -o exec=off -o setuid=off $root/usr/src
+zfs create                                               $root/home
+zfs create                                               $root/var
+zfs create -o compression=lzjb -o exec=off -o setuid=off $root/var/crash
+zfs create                     -o exec=off -o setuid=off $root/var/db
+zfs create -o compression=lzjb -o exec=on  -o setuid=off $root/var/db/pkg
+zfs create                     -o exec=off -o setuid=off $root/var/empty
+zfs create -o compression=lzjb -o exec=off -o setuid=off $root/var/log
+zfs create -o compression=gzip -o exec=off -o setuid=off $root/var/mail
+zfs create                     -o exec=off -o setuid=off $root/var/run
+zfs create -o compression=lzjb -o exec=on  -o setuid=off $root/var/tmp
+zfs set readonly=on $root/var/empty
+
+tar --unlink -xpJf /usr/freebsd-dist/base.txz -C $base
+tar --unlink -xpJf /usr/freebsd-dist/doc.txz -C $base
+tar --unlink -xpJf /usr/freebsd-dist/games.txz -C $base
+tar --unlink -xpJf /usr/freebsd-dist/lib32.txz -C $base
+
+#zpool set bootfs=$pool/root $pool
+
+cat << 'EOM' >> $base/etc/rc.conf
+# minimal rc.conf
+# please set hostname and ip configuration
+#
+
+#hostname="mcp"
+#ifconfig_re0="..."
+#defaultrouter="..."
+
+zfs_enable="YES"
+sshd_enable="YES"
+sendmail_enable="NONE"
+#ntpd_enable="YES"
+
+#existing rc.conf
+EOM
+[ -f /etc/rc.conf ] && cat /etc/rc.conf >> $base/etc/rc.conf
+
+zpool export $pool
+zpool import -o altroot=$base -o cachefile=/tmp/zpool.cache $pool
+cp /tmp/zpool.cache $base/boot/zfs/
+
+mkdir $base$ufsdir
+mount /dev/$ufs $base$ufsdir
+mv $base/boot $base$ufsdir
+ln -s ${ufsdir#/}/boot $base/boot
+chflags -h sunlink $base/boot
+tar -xpPJf /usr/freebsd-dist/kernel.txz -C $base
+
+echo /dev/$ufs $ufsdir ufs  rw 1 1 >> /mnt/etc/fstab
+echo /dev/${swap}.eli none   swap sw 0 0 >> /mnt/etc/fstab
+
+echo geom_eli_load=\"YES\"       >> $base/boot/loader.conf
+echo zfs_load=\"YES\"            >> $base/boot/loader.conf
+echo vfs.root.mountfrom=\"ufs:$ufs\" >> $base/boot/loader.conf
+
+# slightly hacky final setup stuff
+cp /etc/ssh/ssh_host* $base/etc/ssh/
+
+rpw=`grep '^root:[^*]' /etc/master.passwd`
+
+if [ ! -z "$rpw" ] ; then
+sed -i '' '/^root:/i\
+'"$rpw"'
+/^root:/d' $base/etc/master.passwd
+	pwd_mkdb -p -d $base/etc $base/etc/master.passwd
+else
+	chroot $base passwd root
+fi
+
+sed -i '' -e 's/^#\(PermitRootLogin\).*/\1 yes/' $base/etc/ssh/sshd_config
+
+vi $base/etc/rc.conf
+
+export ufsdir eli ufs
+sh PREBOOT setup $base$ufsdir $base
+
+[ -f dropbear ] && cp dropbear $base$ufsdir/sbin/

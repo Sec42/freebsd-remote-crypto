@@ -1,0 +1,202 @@
+[ -z "$ufs" ] && ufs=ada0p2
+[ -z "$eli" ] && eli=ada0p4
+[ -z "$ufsdir" ] && ufsdir=/xboot
+
+if [ x"$1" != x"update" -a x"$1" != x"setup" ] ; then
+	echo "ERROR: run me with setup or update"
+	exit 1
+fi
+
+if [ "$1" = "setup" ] ; then
+	src=${3-/}
+	dst=${2-/xboot}
+fi
+
+if [ "$1" = "update" ] ; then
+	src=${3-/}
+	dst=${2-/xboot}
+fi
+
+if [ ! -d $src ] ; then 
+	echo "Source dir $src does not exist" >&2
+	exit 
+fi
+
+if [ ! -d $dst ] ; then 
+	echo "Destination dir $dst does not exist" >&2
+	exit 
+fi
+
+if [ x"$dst" = x"$src" ] ; then 
+	echo "srcdir and dstdir may not be equal" >&2
+	exit 
+fi
+tar -C $src -cf - bin sbin lib libexec rescue | tar -C $dst -xf - 
+
+mkdir -p $dst/usr/share/misc
+mkdir -p $dst/usr/local/etc
+ln -fs /tmp $dst/usr/local/etc/dropbear
+ln -fs /etc/termcap $dst/usr/share/misc/termcap
+
+mkdir -p -m 1777 $dst/tmp
+mkdir -p $dst/var
+mkdir -p $dst/dev
+mkdir -p $dst/var/empty
+ln -fs /tmp $dst/var/db
+ln -fs /tmp $dst/var/run
+ln -fs /tmp $dst/var/tmp
+
+mkdir -p $dst/root
+mkdir -p /etc
+
+for a in  \
+./ntp \
+./hosts \
+./dhclient.conf \
+./termcap.small \
+./netconfig \
+./protocols \
+./devfs.conf \
+./devd \
+./devd/asus.conf \
+./devd/uath.conf \
+./devd/usb.conf \
+./devd.conf \
+./rc.d \
+./rc.d/netif \
+./rc.d/dhclient \
+./opieaccess \
+./pam.d \
+./pam.d/sshd \
+./pam.d/system \
+./pam.d/passwd \
+./pam.d/login \
+./services \
+./mac.conf \
+./pccard_ether \
+./libmap32.conf \
+./login.access \
+./nsswitch.conf \
+./netstart \
+./shells \
+./libalias.conf \
+./rc.shutdown \
+./hosts.allow \
+./ftpusers \
+./gettytab \
+./sysctl.conf \
+./rc.subr \
+./locate.rc \
+./rpc \
+./defaults \
+./defaults/devfs.rules \
+./defaults/rc.conf \
+./group \
+./dumpdates \
+./ssh \
+./networks \
+./profile \
+./ttys \
+./libmap.conf \
+./login.conf.db \
+./regdomain.xml \
+./zfs \
+./hosts.equiv \
+./login.conf \
+./network.subr \
+./resolv.conf \
+./rc.conf \
+; do
+if [ -d $src/etc/$a ] ; then
+	mkdir -p $dst/etc/$a
+else
+	[ -f $src/etc/$a ] && cp $src/etc/$a $dst/etc/`dirname $a`
+fi
+done
+ln -fs /etc/termcap.small $dst/etc/termcap
+
+[ -f $dst/root/.profile ] || echo 'PATH=${PATH}:/bin:/sbin:/rescue:/usr/bin:/usr/sbin' > $dst/root/.profile
+
+cat <<EOM > $dst/root/DWIM
+PATH=${PATH}:/bin:/sbin:/rescue
+set -ex
+fsck -p
+geli attach $eli
+zfs mount -a
+mount -t devfs none /dev
+mount /dev/$ufs $ufsdir
+exit
+EOM
+
+[ -f $dst/etc/fstab ] || echo "/dev/$part / ufs rw 1 1" >$dst/etc/fstab
+
+if [ "$1" = "setup" ] ; then
+
+if [ ! -f $src/etc/ssh/ssh_host_dsa_key ] ; then
+	chroot $src /etc/rc.d/sshd onekeygen
+fi
+
+if [ ! -f $dst/etc/master.passwd ] ; then 
+grep -E "^(root|nobody):" $src/etc/master.passwd |sed 's!/bin/csh!/bin/sh!'> $dst/etc/master.passwd
+fi
+
+cat << 'EOM' > $dst/etc/rc
+#!/bin/sh
+#
+
+stty status '^T' 2> /dev/null
+trap : 2
+trap "echo 'Boot interrupted'; exit 1" 3
+HOME=/
+PATH=/sbin:/bin:/usr/sbin:/usr/bin
+export HOME PATH
+
+. /etc/rc.subr
+load_rc_config 'XXX'
+
+trap "_rc_conf_loaded=false; load_rc_config 'XXX'" ALRM
+
+PORT=22
+
+# To get dhclient working
+synchronous_dhclient="YES"
+export synchronous_dhclient
+mdmfs -s16m -p 1777 -S md /tmp
+
+# perhaps ipfw deny all except tcp/22 and icmp/echo
+run_rc_script /etc/rc.d/netif start
+run_rc_script /etc/rc.d/routing start
+echo "Waiting for sshd to exit or press ^C ..."
+/sbin/dropbear -E -F -p $PORT -r /etc/dropbear_host_key -R
+echo " done!"
+run_rc_script /etc/rc.d/routing stop
+run_rc_script /etc/rc.d/netif stop
+
+if [ -f /PREBOOT ] ; then
+	echo "Running fallback /bin/sh"
+	cd /root
+	/bin/sh
+fi
+
+umount /tmp
+echo 'Running real /etc/rc to go multiuser'
+# remove "autoboot" because fsck might not work anymore here.
+exec /bin/sh /etc/rc
+EOM
+
+fi
+
+(
+uname -v | sed -e 's,^\([^#]*\) #\(.* [1-2][0-9][0-9][0-9]\).*/\([^\]*\) $,\1 (\3) #\2,'
+echo ""
+echo "PREBOOT MAINTENANCE MODE"
+echo ""
+echo '"killall dropbear" to continue boot'
+echo ""
+)> $dst/etc/motd
+
+
+dropbearconvert openssh dropbear $src/etc/ssh/ssh_host_dsa_key $dst/etc/dropbear_host_key
+cp $src/usr/local/sbin/dropbear $dst/sbin/
+pwd_mkdb -p -d $dst/etc $dst/etc/master.passwd
+touch $dst/PREBOOT
