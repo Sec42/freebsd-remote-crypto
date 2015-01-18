@@ -105,4 +105,4 @@ vi $base/etc/rc.conf
 export ufsdir eli ufs
 sh PREBOOT setup $base$ufsdir $base
 
-[ -f dropbear ] && cp dropbear $base$ufsdir/sbin/
+[ -f bin/dropbear ] && cp bin/dropbear $base$ufsdir/sbin/

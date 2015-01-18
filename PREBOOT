@@ -65,6 +65,7 @@ for a in  \
 ./rc.d \
 ./rc.d/netif \
 ./rc.d/dhclient \
+./rc.d/routing \
 ./opieaccess \
 ./pam.d \
 ./pam.d/sshd \
@@ -132,13 +133,11 @@ EOM
 
 if [ "$1" = "setup" ] ; then
 
-if [ ! -f $src/etc/ssh/ssh_host_dsa_key ] ; then
-	chroot $src /etc/rc.d/sshd onekeygen
-fi
+	if [ ! -f $src/etc/ssh/ssh_host_dsa_key ] ; then
+		chroot $src /etc/rc.d/sshd onekeygen
+	fi
 
-if [ ! -f $dst/etc/master.passwd ] ; then 
-grep -E "^(root|nobody):" $src/etc/master.passwd |sed 's!/bin/csh!/bin/sh!'> $dst/etc/master.passwd
-fi
+	grep -E "^(root|nobody):" $src/etc/master.passwd |sed 's!/bin/csh!/bin/sh!'> $dst/etc/master.passwd
 
 cat << 'EOM' > $dst/etc/rc
 #!/bin/sh
@@ -185,6 +184,7 @@ exec /bin/sh /etc/rc
 EOM
 
 fi
+# END OF SETUP
 
 (
 uname -v | sed -e 's,^\([^#]*\) #\(.* [1-2][0-9][0-9][0-9]\).*/\([^\]*\) $,\1 (\3) #\2,'
@@ -196,7 +196,7 @@ echo ""
 )> $dst/etc/motd
 
 
-dropbearconvert openssh dropbear $src/etc/ssh/ssh_host_dsa_key $dst/etc/dropbear_host_key
+dropbearconvert openssh dropbear $src/etc/ssh/ssh_host_ecdsa_key $dst/etc/dropbear_host_key
 cp $src/usr/local/sbin/dropbear $dst/sbin/
 pwd_mkdb -p -d $dst/etc $dst/etc/master.passwd
 touch $dst/PREBOOT
