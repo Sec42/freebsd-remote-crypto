@@ -1,26 +1,51 @@
 set -x
+set -e
 
-geom=ada0
+geom0=ada0
+geom1=ada1
 base=/mnt
 ufsdir=/xboot
 
-gpart destroy -F $geom
-gpart create -s gpt $geom
-gpart add -b 34 -s 64k  -t freebsd-boot $geom
-# 512 is absolute minimum, the kernel is so large.
-ufs=`gpart add -s 768M -t freebsd-ufs $geom | awk '{print $1}'`
-swap=`gpart add -s 1G -t freebsd-swap $geom | awk '{print $1}'`
-eli=`gpart add -t freebsd-zfs $geom | awk '{print $1}'`
+gpart destroy -F $geom0 || true
+gpart destroy -F $geom1 || true
+gpart create -s gpt $geom0
+gpart create -s gpt $geom1
+gpart add -b 64 -s 64k   -t freebsd-boot       $geom0
+gpart add -b 64 -s 64k   -t freebsd-boot       $geom1
+gpart add -l boot0 -s 1G -t freebsd-ufs  -a 4k $geom0 # 512M is absolute minimum, the kernel is so large.
+gpart add -l boot1 -s 1G -t freebsd-ufs  -a 4k $geom1
+gpart add -l swap0 -s 2G -t freebsd-swap -a 4k $geom0
+gpart add -l swap1 -s 2G -t freebsd-swap -a 4k $geom1
+gpart add -l zroot0      -t freebsd-zfs  -a 4k $geom0
+gpart add -l zroot1      -t freebsd-zfs  -a 4k $geom1
 
-geli init -s 4096 $eli
-geli attach $eli
+kldload geom_mirror || true
+gmirror label -b load -F swap /dev/gpt/swap0 /dev/gpt/swap1
+gmirror label -b load -F boot /dev/gpt/boot0 /dev/gpt/boot1
 
-gpart bootcode -b /boot/pmbr -p /boot/gptboot -i 1 $geom
+geli onetime -d -e AES-XTS -l 256 -s 4096 /dev/mirror/swap
 
-newfs -U -j $ufs
+set +x
+echo -n Password:
+stty -echo
+read pw
+stty echo
+echo $pw > /tmp/pw
+echo ""
+set -x
+
+geli init -s 4096 -J /tmp/pw /dev/gpt/zroot0
+geli init -s 4096 -J /tmp/pw /dev/gpt/zroot1
+geli attach -j /tmp/pw /dev/gpt/zroot0
+geli attach -j /tmp/pw /dev/gpt/zroot1
+
+gpart bootcode -b /boot/pmbr -p /boot/gptboot -i 1 $geom0
+gpart bootcode -b /boot/pmbr -p /boot/gptboot -i 1 $geom1
+
+newfs -U -j /dev/mirror/boot
 
 pool=tank
-zpool create -f -m none -o altroot=$base -o cachefile=/tmp/zpool.cache $pool ${eli}.eli
+zpool create -f -m none -o altroot=$base -o cachefile=/tmp/zpool.cache $pool mirror /dev/gpt/zroot0.eli /dev/gpt/zroot1.eli
 
 root=$pool/root
 zfs create -o mountpoint=/                               $root
@@ -39,53 +64,66 @@ zfs create -o compression=lzjb -o exec=off -o setuid=off $root/var/log
 zfs create -o compression=gzip -o exec=off -o setuid=off $root/var/mail
 zfs create                     -o exec=off -o setuid=off $root/var/run
 zfs create -o compression=lzjb -o exec=on  -o setuid=off $root/var/tmp
-zfs set readonly=on $root/var/empty
 
 tar --unlink -xpJf /usr/freebsd-dist/base.txz -C $base
 tar --unlink -xpJf /usr/freebsd-dist/doc.txz -C $base
-tar --unlink -xpJf /usr/freebsd-dist/games.txz -C $base
+tar --unlink -xpJf /usr/freebsd-dist/games.txz -C $base || true
 tar --unlink -xpJf /usr/freebsd-dist/lib32.txz -C $base
+
+zfs set readonly=on $root/var/empty
 
 #zpool set bootfs=$pool/root $pool
 
-cat << 'EOM' >> $base/etc/rc.conf
+if=$(ifconfig -ul ether |awk '{print $1}')
+ip=$(ifconfig $if inet|awk '/inet/{print $2}')
+router=$(netstat -nrf inet|awk '/default/{print $2}')
+name=$(hostname)
+[ -z "$name" ] && name="setup"
+
+cat << EOM >> $base/etc/rc.conf
 # minimal rc.conf
 # please set hostname and ip configuration
 #
 
-#hostname="mcp"
-#ifconfig_re0="..."
-#defaultrouter="..."
+#hostname="$name"
+
+#ifconfig_$if="$ip"
+#defaultrouter="$router"
+# OR
+#ifconfig_$if="DHCP"
 
 zfs_enable="YES"
 sshd_enable="YES"
 sendmail_enable="NONE"
-#ntpd_enable="YES"
 
-#existing rc.conf
+# existing rc.conf
 EOM
-[ -f /etc/rc.conf ] && cat /etc/rc.conf >> $base/etc/rc.conf
+[ -f /etc/rc.conf ] && cat /etc/rc.conf|sed 's/^/#/' >> $base/etc/rc.conf
 
 zpool export $pool
 zpool import -o altroot=$base -o cachefile=/tmp/zpool.cache $pool
 cp /tmp/zpool.cache $base/boot/zfs/
 
-mkdir $base$ufsdir
-mount /dev/$ufs $base$ufsdir
+[ ! -d $base$ufsdir ] && mkdir $base$ufsdir
+mount /dev/mirror/boot $base$ufsdir
 mv $base/boot $base$ufsdir
 ln -s ${ufsdir#/}/boot $base/boot
 chflags -h sunlink $base/boot
 tar -xpPJf /usr/freebsd-dist/kernel.txz -C $base
 
-echo /dev/$ufs $ufsdir ufs  rw 1 1 >> /mnt/etc/fstab
-echo /dev/${swap}.eli none   swap sw 0 0 >> /mnt/etc/fstab
+echo /dev/mirror/boot $ufsdir ufs  rw 1 1 >> /mnt/etc/fstab
+echo /dev/mirror/swap.eli none   swap sw 0 0 >> /mnt/etc/fstab
 
-echo geom_eli_load=\"YES\"       >> $base/boot/loader.conf
-echo zfs_load=\"YES\"            >> $base/boot/loader.conf
-echo vfs.root.mountfrom=\"ufs:$ufs\" >> $base/boot/loader.conf
+echo 'geom_eli_load="YES"'           >> $base/boot/loader.conf
+echo 'geom_mirror_load="YES"'        >> $base/boot/loader.conf
+echo 'zfs_load="YES"'              >> $base/boot/loader.conf
+echo vfs.root.mountfrom=\"ufs:/dev/mirror/boot\" >> $base/boot/loader.conf
 
-# slightly hacky final setup stuff
-cp /etc/ssh/ssh_host* $base/etc/ssh/
+# -- Enable daily status reporting
+echo 'daily_status_gmirror_enable="YES"' >> $base/etc/periodic.conf
+
+# If we used ssh, keep the keys
+cp /etc/ssh/ssh_host* $base/etc/ssh/ || true
 
 rpw=`grep '^root:[^*]' /etc/master.passwd`
 
@@ -102,7 +140,9 @@ sed -i '' -e 's/^#\(PermitRootLogin\).*/\1 yes/' $base/etc/ssh/sshd_config
 
 vi $base/etc/rc.conf
 
-export ufsdir eli ufs
+export ufsdir pool
 sh PREBOOT setup $base$ufsdir $base
 
 [ -f bin/dropbear ] && cp bin/dropbear $base$ufsdir/sbin/
+
+echo "All ok"

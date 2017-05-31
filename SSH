@@ -1,3 +1,4 @@
+# Use this if you want to SSH to the box during setup
 mkdir /tmp/etc
 mdmfs -s32m -S md /tmp/etc
 mount -t unionfs /tmp/etc /etc

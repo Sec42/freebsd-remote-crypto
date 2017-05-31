@@ -1,6 +1,5 @@
-[ -z "$ufs" ] && ufs=ada0p2
-[ -z "$eli" ] && eli=ada0p4
 [ -z "$ufsdir" ] && ufsdir=/xboot
+[ -z "$pool" ]   && pool=tank
 
 if [ x"$1" != x"update" -a x"$1" != x"setup" ] ; then
 	echo "ERROR: run me with setup or update"
@@ -122,14 +121,20 @@ cat <<EOM > $dst/root/DWIM
 PATH=${PATH}:/bin:/sbin:/rescue
 set -ex
 fsck -p
-geli attach $eli
-zfs mount -a
-mount -t devfs none /dev
-mount /dev/$ufs $ufsdir
+geli attach gpt/zroot0
+geli attach gpt/zroot1
+kenv vfs.root.mountfrom="zfs:$pool/root"
+reboot -r
+
+#OLD way:
+#zfs mount -a
+#mount -t devfs none /dev
+#mount /dev/mirror/boot $ufsdir
 exit
 EOM
 
-[ -f $dst/etc/fstab ] || echo "/dev/$part / ufs rw 1 1" >$dst/etc/fstab
+#for fsck -p
+[ -f $dst/etc/fstab ] || echo "/dev/mirror/boot / ufs rw 1 1" >$dst/etc/fstab
 
 if [ "$1" = "setup" ] ; then
 
