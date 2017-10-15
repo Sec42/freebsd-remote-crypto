@@ -188,15 +188,21 @@ echo 'Running real /etc/rc to go multiuser'
 exec /bin/sh /etc/rc
 EOM
 
-fi
 # END OF SETUP
+else
+
+# update root password
+(grep '^root:' $src/etc/master.passwd; grep -v '^root:' $dst/etc/master.passwd ) |sed 's!/bin/csh!/bin/sh!'> $dst/etc/master.passwd
+
+fi
 
 (
 uname -v | sed -e 's,^\([^#]*\) #\(.* [1-2][0-9][0-9][0-9]\).*/\([^\]*\) $,\1 (\3) #\2,'
 echo ""
 echo "PREBOOT MAINTENANCE MODE"
 echo ""
-echo '"killall dropbear" to continue boot'
+echo 'run "sh DWIM" to unlock disk'
+echo 'run "killall dropbear" instead to continue boot'
 echo ""
 )> $dst/etc/motd
 

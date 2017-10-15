@@ -36,7 +36,7 @@ Now run the script
 sh CRYPT
 ```
 
-It will ask you for your crypt passphrase (only once, so type carefully), late throw you into `vi` to edit a minimal `/etc/rc.conf` (set the hostname and IP) and should end with "All ok"
+It will ask you for your crypt passphrase (only once, so type carefully), later throw you into `vi` to edit a minimal `/etc/rc.conf` (set the hostname and IP) and after you quit the vi it should end with "All ok"
 
 After that, you can remove your installation media and reboot the machine. It will come up with a shell. Run "sh DWIM" and enter your passphrase to boot to the final system.
 
@@ -55,7 +55,9 @@ make OPTIONS_SET=STATIC install clean
 pkg lock -y dropbear
 ```
 
-Afte this installation, run the `PREBOOT update` as described below at least once to make sure your preboot environment is properly setup
+The last line "lock"s the dropbear so "pkg upgrade" will not replace it with a dynamically linked version.
+
+After this installation, run the `PREBOOT update` as described below at least once to make sure your preboot environment is properly setup
 
 
 # Maintenance:
@@ -63,7 +65,7 @@ Afte this installation, run the `PREBOOT update` as described below at least onc
 After each system/kernel update, run the `PREBOOT` script.
 
 ```
-sh PREBOOT update`
+sh PREBOOT update
 ```
 This updates your preboot environment and makes sure every stays secure and bug-free :-)
 
@@ -86,13 +88,13 @@ don't forget to run the `PREBOOT` script as above after this.
 
 # Usage[boot]:
 
-Either ssh to the box as root, or hit ^c to get a shell. Run the provided script
+Either ssh to the box as root, or hit ^c on the console to get a shell. Run the provided script
 
 ```
 sh DWIM
 ```
 
-and you will be asked for the crypto passphrase (twice), after which the boot will automatically continue. If you are logged in via ssh, your connection will die. Give it a few moments to come up properly  to re-login
+and you will be asked for the crypto passphrase (twice), after which the boot will automatically continue. If you are logged in via ssh, your connection will die. Give it a few moments to come up properly, then you should be able to re-login
 
 # Additional scripts
 
@@ -102,4 +104,4 @@ If you have a dropbear binary in `bin/` during the setup run of `CRYPT`, it will
 
 # Help
 
-If you run into problems, please open an issue
+If you run into problems, please open an issue.
