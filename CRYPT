@@ -4,6 +4,23 @@ set -e
 # the two disks
 geom0=ada0
 geom1=ada1
+
+# installation files be here:
+bsd=/usr/freebsd-dist
+
+if [ "$(uname -s)" != "FreeBSD" ] ; then
+	echo "Only works on FreeBSD, Sorry." >&2
+	exit 1
+fi
+
+if [ ! -f $bsd/base.txz ] ; then
+	set +x
+	echo "Can't find FreeBSD installation files in $bsd" >&2
+	echo "Try:"
+	echo "(cd $bsd && wget -nd --no-parent -r ftp://ftp.freebsd.org/pub/FreeBSD/releases/$(uname -m)/$(uname -r |sed 's/-.*/-RELEASE/')/)"
+	exit 1
+fi
+
 base=/mnt
 ufsdir=/xboot
 
@@ -66,10 +83,10 @@ zfs create -o compression=gzip -o exec=off -o setuid=off $root/var/mail
 zfs create                     -o exec=off -o setuid=off $root/var/run
 zfs create -o compression=lzjb -o exec=on  -o setuid=off $root/var/tmp
 
-tar --unlink -xpJf /usr/freebsd-dist/base.txz -C $base
-tar --unlink -xpJf /usr/freebsd-dist/doc.txz -C $base
-tar --unlink -xpJf /usr/freebsd-dist/games.txz -C $base || true
-tar --unlink -xpJf /usr/freebsd-dist/lib32.txz -C $base
+tar --unlink -xpJf $bsd/base.txz -C $base
+tar --unlink -xpJf $bsd/doc.txz -C $base
+tar --unlink -xpJf $bsd/games.txz -C $base || true
+tar --unlink -xpJf $bsd/lib32.txz -C $base
 
 zfs set readonly=on $root/var/empty
 
@@ -110,7 +127,7 @@ mount /dev/mirror/boot $base$ufsdir
 mv $base/boot $base$ufsdir
 ln -s ${ufsdir#/}/boot $base/boot
 chflags -h sunlink $base/boot
-tar -xpPJf /usr/freebsd-dist/kernel.txz -C $base
+tar -xpPJf $bsd/kernel.txz -C $base
 
 echo /dev/mirror/boot $ufsdir ufs  rw 1 1 >> /mnt/etc/fstab
 echo /dev/mirror/swap.eli none   swap sw 0 0 >> /mnt/etc/fstab
