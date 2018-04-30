@@ -127,7 +127,8 @@ cp /tmp/zpool.cache $base/boot/zfs/
 
 [ ! -d $base$ufsdir ] && mkdir $base$ufsdir
 mount /dev/mirror/boot $base$ufsdir
-mv $base/boot $base$ufsdir
+cp -pRP $base/boot $base$ufsdir
+rm -rf $base/boot
 ln -s ${ufsdir#/}/boot $base/boot
 chflags -h sunlink $base/boot
 tar -xpPJf $bsd/kernel.txz -C $base
