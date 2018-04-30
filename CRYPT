@@ -63,7 +63,9 @@ geli attach -j /tmp/pw /dev/gpt/zroot1
 gpart bootcode -b /boot/pmbr -p /boot/gptboot -i 1 $geom0
 gpart bootcode -b /boot/pmbr -p /boot/gptboot -i 1 $geom1
 
-newfs -U -j /dev/mirror/boot
+# no idea why -j fails....
+#newfs -U -j /dev/mirror/boot
+newfs -U /dev/mirror/boot
 
 pool=tank
 zpool create -f -m none -o altroot=$base -o cachefile=/tmp/zpool.cache $pool mirror /dev/gpt/zroot0.eli /dev/gpt/zroot1.eli
