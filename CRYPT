@@ -21,6 +21,9 @@ if [ ! -f $bsd/base.txz ] ; then
 	exit 1
 fi
 
+bin=$(dirname $0)
+[ "$bin" == "." ] && bin=$(pwd) || true
+
 base=/mnt
 ufsdir=/xboot
 
