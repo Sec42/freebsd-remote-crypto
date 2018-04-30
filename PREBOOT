@@ -133,6 +133,20 @@ reboot -r
 exit
 EOM
 
+tmpbase=/tmp/mnt
+cat <<EOM > $dst/root/FIX
+PATH=${PATH}:/bin:/sbin:/rescue
+fsck -p
+geli attach gpt/zroot0
+geli attach gpt/zroot1
+kenv vfs.root.mountfrom="zfs:$pool/root"
+mkdir $tmpbase || true
+zpool import -o altroot=$tmpbase -o cachefile=/tmp/zpool.cache $pool
+echo "Mounted @ $tmpbase"
+echo 'Use "reboot -r" when done.'
+EOM
+
+
 #for fsck -p
 [ -f $dst/etc/fstab ] || echo "/dev/mirror/boot / ufs rw 1 1" >$dst/etc/fstab
 
