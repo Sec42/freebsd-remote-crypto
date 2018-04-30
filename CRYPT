@@ -1,6 +1,7 @@
 set -x
 set -e
 
+# the two disks
 geom0=ada0
 geom1=ada1
 base=/mnt
@@ -116,7 +117,7 @@ echo /dev/mirror/swap.eli none   swap sw 0 0 >> /mnt/etc/fstab
 
 echo 'geom_eli_load="YES"'           >> $base/boot/loader.conf
 echo 'geom_mirror_load="YES"'        >> $base/boot/loader.conf
-echo 'zfs_load="YES"'              >> $base/boot/loader.conf
+echo 'zfs_load="YES"'                >> $base/boot/loader.conf
 echo vfs.root.mountfrom=\"ufs:/dev/mirror/boot\" >> $base/boot/loader.conf
 
 # -- Enable daily status reporting
