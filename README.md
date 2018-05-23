@@ -67,7 +67,7 @@ After each system/kernel update, run the `PREBOOT` script.
 ```
 sh PREBOOT update
 ```
-This updates your preboot environment and makes sure every stays secure and bug-free :-)
+This updates your preboot environment and makes sure everything stays secure and bug-free :-)
 
 Also periodically check if your dropbear is up to date with 
 ```
@@ -101,6 +101,10 @@ and you will be asked for the crypto passphrase (twice), after which the boot wi
 The `SSH` script is a template on how to enable SSH from the setup shell. This might be a useful starting point if you want to replicate this setup on a remote machine without console access.
 
 If you have a dropbear binary in `bin/` during the setup run of `CRYPT`, it will already copy it to the correct place.
+
+The `RE-FIX` script is an example on how to recover from a failed disk after it has been replaced.
+
+Essentially it is a copy of the relevant lines from the `CRYPT` script.
 
 # Help
 
