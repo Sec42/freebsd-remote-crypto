@@ -1,0 +1,34 @@
+# template on how to get everyting clean after a disk failuer /change
+
+echo "Please don't run without checking contents first" >&2
+exit 1
+
+# Which disk?
+geom0=ada0
+
+# applicable lines from CRYPT
+gpart create -s gpt $geom0
+gpart add -b 64 -s 64k   -t freebsd-boot       $geom0
+gpart add -l boot0 -s 1G -t freebsd-ufs  -a 4k $geom0
+gpart add -l swap0 -s 2G -t freebsd-swap -a 4k $geom0
+gpart add -l zroot0      -t freebsd-zfs  -a 4k $geom0
+
+gpart bootcode -b /boot/pmbr -p /boot/gptboot -i 1 $geom0 
+
+# make gmirrors healthy again
+gmirror forget swap
+gmirror insert swap ada0p3
+
+gmirror forget boot
+gmirror insert boot ada0p2
+
+# needs crypto passphrase
+geli init -s 4096 /dev/gpt/zroot0
+geli attach /dev/gpt/zroot0
+
+zpool replace tank /dev/gpt/zroot0.eli
+
+# check status
+zpool status -x tank
+gmirror list boot |grep ^State
+gmirror list swap |grep ^State
