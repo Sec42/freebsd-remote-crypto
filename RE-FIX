@@ -17,10 +17,10 @@ gpart bootcode -b /boot/pmbr -p /boot/gptboot -i 1 $geom0
 
 # make gmirrors healthy again
 gmirror forget swap
-gmirror insert swap ada0p3
+gmirror insert swap ${geom0}p3
 
 gmirror forget boot
-gmirror insert boot ada0p2
+gmirror insert boot ${geom0}p2
 
 # needs crypto passphrase
 geli init -s 4096 /dev/gpt/zroot0
