@@ -30,7 +30,15 @@ if [ x"$dst" = x"$src" ] ; then
 	echo "srcdir and dstdir may not be equal" >&2
 	exit 
 fi
+
+if [ "$1" = "update" ] ; then
+	schg=$(find ${dst} -flags schg)
+	chflags noschg ${schg}
+fi
 tar -C $src -cf - bin sbin lib libexec rescue | tar -C $dst -xf - 
+if [ "$1" = "update" ] ; then
+	chflags schg ${schg}
+fi
 
 mkdir -p $dst/usr/share/misc
 mkdir -p $dst/usr/local/etc
