@@ -51,7 +51,7 @@ To compile and install it,
 ```
 pkg install gmake indexinfo gettext-runtime
 cd /usr/ports/security/dropbear
-make OPTIONS_SET=STATIC install clean
+make OPTIONS_SET="STATIC ECDSA DSA BLOWFISH" BATCH=YES install clean
 pkg lock -y dropbear
 ```
 
@@ -80,7 +80,7 @@ and if necessary, update it.
 cd /usr/ports/security/dropbear
 pkg unlock -y dropbear
 pkg delete -y dropbear
-make OPTIONS_SET=STATIC install clean
+make OPTIONS_SET="STATIC ECDSA DSA BLOWFISH" BATCH=YES install clean
 pkg lock -y dropbear
 ```
 
