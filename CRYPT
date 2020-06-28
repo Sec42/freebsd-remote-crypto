@@ -16,8 +16,7 @@ fi
 if [ ! -f $bsd/base.txz ] ; then
 	pkg update
 	pkg install -y wget
-	mkdir $bsd
-	wget -nd --no-parent -r ftp://ftp.freebsd.org/pub/FreeBSD/releases/$(uname -m)/$(uname -r |sed 's/-.*/-RELEASE/')/ -o $bsd
+	wget -P $bsd -nd --no-parent -r ftp://ftp.freebsd.org/pub/FreeBSD/releases/$(uname -m)/$(uname -r |sed 's/-.*/-RELEASE/')/
 fi
 
 bin=$(dirname $0)
