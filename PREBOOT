@@ -158,13 +158,14 @@ EOM
 #for fsck -p
 [ -f $dst/etc/fstab ] || echo "/dev/mirror/boot / ufs rw 1 1" >$dst/etc/fstab
 
+grep -E "^(root|nobody):" $src/etc/master.passwd |sed 's!/bin/csh!/bin/sh!'> $dst/etc/master.passwd
+
 if [ "$1" = "setup" ] ; then
 
 	if [ ! -f $src/etc/ssh/ssh_host_dsa_key ] ; then
 		chroot $src /etc/rc.d/sshd onekeygen
 	fi
 
-	grep -E "^(root|nobody):" $src/etc/master.passwd |sed 's!/bin/csh!/bin/sh!'> $dst/etc/master.passwd
 
 cat << 'EOM' > $dst/etc/rc
 #!/bin/sh

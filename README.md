@@ -62,7 +62,7 @@ After this installation, run the `PREBOOT update` as described below at least on
 
 # Maintenance:
 
-After each system/kernel update, run the `PREBOOT` script.
+After each system/kernel update (and root password change), run the `PREBOOT` script.
 
 ```
 sh PREBOOT update
