@@ -32,7 +32,7 @@ if [ x"$dst" = x"$src" ] ; then
 fi
 
 if [ "$1" = "update" ] ; then
-	schg=$(find ${dst} -flags schg)
+	schg=$(find ${dst} -flags +schg)
 	chflags noschg ${schg}
 fi
 tar -C $src -cf - bin sbin lib libexec rescue | tar -C $dst -xf - 
