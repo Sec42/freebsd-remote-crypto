@@ -11,7 +11,7 @@ good=ada1
 
 # applicable lines from CRYPT
 gpart create -s gpt $geom0
-gpart add -b 64 -s 64k   -t freebsd-boot       $geom0
+gpart add -b 64 -s 512k  -t freebsd-boot       $geom0
 gpart add -l boot0 -s 1G -t freebsd-ufs  -a 4k $geom0
 gpart add -l swap0 -s 2G -t freebsd-swap -a 4k $geom0
 gpart add -l zroot0      -t freebsd-zfs  -a 4k $geom0
