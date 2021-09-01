@@ -14,11 +14,9 @@ if [ "$(uname -s)" != "FreeBSD" ] ; then
 fi
 
 if [ ! -f $bsd/base.txz ] ; then
-	set +x
-	echo "Can't find FreeBSD installation files in $bsd" >&2
-	echo "Try:"
-	echo "(cd $bsd && wget -nd --no-parent -r ftp://ftp.freebsd.org/pub/FreeBSD/releases/$(uname -m)/$(uname -r |sed 's/-.*/-RELEASE/')/)"
-	exit 1
+	pkg update
+	pkg install -y wget
+	wget -P $bsd -nd --no-parent -r ftp://ftp.freebsd.org/pub/FreeBSD/releases/$(uname -m)/$(uname -r |sed 's/-.*/-RELEASE/')/
 fi
 
 bin=$(dirname $0)
