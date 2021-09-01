@@ -162,7 +162,7 @@ fi
 
 sed -i '' -e 's/^#\(PermitRootLogin\).*/\1 yes/' $base/etc/ssh/sshd_config
 
-vi $base/etc/rc.conf
+ee $base/etc/rc.conf
 
 export ufsdir pool
 sh PREBOOT setup $base$ufsdir $base
