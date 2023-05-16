@@ -31,8 +31,8 @@ gpart destroy -F $geom0 || true
 gpart destroy -F $geom1 || true
 gpart create -s gpt $geom0
 gpart create -s gpt $geom1
-gpart add -b 64 -s 512k  -t freebsd-boot       $geom0
-gpart add -b 64 -s 512k  -t freebsd-boot       $geom1
+gpart add -b 40 -s 512k  -t freebsd-boot       $geom0
+gpart add -b 40 -s 512k  -t freebsd-boot       $geom1
 gpart add -l boot0 -s 1G -t freebsd-ufs  -a 4k $geom0 # 512M is absolute minimum, the kernel is so large.
 gpart add -l boot1 -s 1G -t freebsd-ufs  -a 4k $geom1
 gpart add -l swap0 -s 2G -t freebsd-swap -a 4k $geom0
