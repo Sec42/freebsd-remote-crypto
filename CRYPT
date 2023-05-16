@@ -13,11 +13,26 @@ if [ "$(uname -s)" != "FreeBSD" ] ; then
 	exit 1
 fi
 
+if [ ! -d $bsd ] ; then
+	set +x
+	rdir="$(uname -m)/$(uname -r |sed 's/-.*/-RELEASE/')"
+	echo "FreeBSD installation files missing..."
+	echo ""
+	echo "Enter to fetch, ^c to abort"
+	read cont
+	(
+     mkdir $bsd
+     cd $bsd
+	 fetch ftp://ftp.freebsd.org/pub/FreeBSD/releases/$rdir/base.txz
+	 fetch ftp://ftp.freebsd.org/pub/FreeBSD/releases/$rdir/lib32.txz
+	 fetch ftp://ftp.freebsd.org/pub/FreeBSD/releases/$rdir/kernel.txz
+	)
+	set -x
+fi
+
 if [ ! -f $bsd/base.txz ] ; then
 	set +x
 	echo "Can't find FreeBSD installation files in $bsd" >&2
-	echo "Try:"
-	echo "(cd $bsd && wget -nd --no-parent -r ftp://ftp.freebsd.org/pub/FreeBSD/releases/$(uname -m)/$(uname -r |sed 's/-.*/-RELEASE/')/)"
 	exit 1
 fi
 
@@ -89,8 +104,6 @@ zfs create                     -o exec=off -o setuid=off $root/var/run
 zfs create -o compression=lzjb -o exec=on  -o setuid=off $root/var/tmp
 
 tar --unlink -xpJf $bsd/base.txz -C $base
-tar --unlink -xpJf $bsd/doc.txz -C $base
-tar --unlink -xpJf $bsd/games.txz -C $base || true
 tar --unlink -xpJf $bsd/lib32.txz -C $base
 
 zfs set readonly=on $root/var/empty
