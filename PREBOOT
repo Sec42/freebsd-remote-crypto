@@ -179,9 +179,9 @@ PATH=/sbin:/bin:/usr/sbin:/usr/bin
 export HOME PATH
 
 . /etc/rc.subr
-load_rc_config 'XXX'
+load_rc_config
+trap "_rc_conf_loaded=false; load_rc_config" ALRM
 
-trap "_rc_conf_loaded=false; load_rc_config 'XXX'" ALRM
 
 PORT=22
 
