@@ -181,5 +181,7 @@ export ufsdir pool
 sh PREBOOT setup $base$ufsdir $base
 
 [ -f bin/dropbear ] && cp bin/dropbear $base$ufsdir/sbin/
+[ -d $base$ufsdir/root/.ssh ] || mkdir $base$ufsdir/root/.ssh
+[ -f .ssh/authorized_keys ] && cp .ssh/authorized_keys $base$ufsdir/root/.ssh/
 
 echo "All ok"
