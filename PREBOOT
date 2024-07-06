@@ -73,6 +73,8 @@ for a in  \
 ./rc.d/netif \
 ./rc.d/dhclient \
 ./rc.d/routing \
+./rc.d/hostid \
+./hostid \
 ./opieaccess \
 ./pam.d \
 ./pam.d/sshd \
@@ -143,15 +145,26 @@ EOM
 
 tmpbase=/tmp/mnt
 cat <<EOM > $dst/root/FIX
-PATH=${PATH}:/bin:/sbin:/rescue
+[ -z "\$TERM" ] && TERM=vt100 && export TERM
+PATH=\${PATH}:/bin:/sbin:/rescue:${tmpbase}/usr/bin:${tmpbase}/usr/local/bin
 fsck -p
 geli attach gpt/zroot0
 geli attach gpt/zroot1
 kenv vfs.root.mountfrom="zfs:$pool/root"
-mkdir $tmpbase || true
+mount -u /
+[ ! -d $tmpbase ] && mkdir $tmpbase || true
 zpool import -o altroot=$tmpbase -o cachefile=/tmp/zpool.cache $pool
+mount -t devfs devfs ${tmpbase}/dev
 echo "Mounted @ $tmpbase"
-echo 'Use "reboot -r" when done.'
+ldconfig $tmpbase/usr/lib
+/etc/rc.d/hostid start
+echo ''
+echo 'Hope you did source me...'
+echo ''
+echo 'To continue boot:'
+echo " - umount $tmpbase/dev"
+echo " - zpool export $pool"
+echo " - reboot -r"
 EOM
 
 
