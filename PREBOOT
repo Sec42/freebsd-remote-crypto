@@ -42,7 +42,7 @@ fi
 
 mkdir -p $dst/usr/share/misc
 mkdir -p $dst/usr/local/etc
-ln -fs /tmp $dst/usr/local/etc/dropbear
+ln -fs /etc/dropbear $dst/usr/local/etc/dropbear
 ln -fs /etc/termcap $dst/usr/share/misc/termcap
 
 mkdir -p -m 1777 $dst/tmp
@@ -194,7 +194,7 @@ mdmfs -s16m -p 1777 -S md /tmp
 run_rc_script /etc/rc.d/netif start
 run_rc_script /etc/rc.d/routing start
 echo "Waiting for sshd to exit or press ^C ..."
-/sbin/dropbear -E -F -p $PORT -r /etc/dropbear_host_key -R
+/sbin/dropbear -E -F -p $PORT -R
 echo " done!"
 run_rc_script /etc/rc.d/routing stop
 run_rc_script /etc/rc.d/netif stop
@@ -230,7 +230,13 @@ echo ""
 )> $dst/etc/motd
 
 
-dropbearconvert openssh dropbear $src/etc/ssh/ssh_host_ecdsa_key $dst/etc/dropbear_host_key
+# Convert (current) ssh keys to dropbear keys.
+
+mkdir -p $dst/etc/dropbear
+for alg in ecdsa ed25519 rsa; do
+	dropbearconvert openssh dropbear $src/etc/ssh/ssh_host_${alg}_key $dst/etc/dropbear/dropbear_${alg}_host_key
+done
 cp $src/usr/local/sbin/dropbear $dst/sbin/
+
 pwd_mkdb -p -d $dst/etc $dst/etc/master.passwd
 touch $dst/PREBOOT
