@@ -201,6 +201,8 @@ run_rc_script /etc/rc.d/netif stop
 
 if [ -f /PREBOOT ] ; then
 	echo "Running fallback /bin/sh"
+	echo ""
+	cat /etc/motd
 	cd /root
 	/bin/sh
 fi
@@ -224,8 +226,9 @@ uname -v | sed -e 's,^\([^#]*\) #\(.* [1-2][0-9][0-9][0-9]\).*/\([^\]*\) $,\1 (\
 echo ""
 echo "PREBOOT MAINTENANCE MODE"
 echo ""
-echo 'run "sh DWIM" to unlock disk'
-echo 'run "killall dropbear" instead to continue boot'
+echo 'run "sh DWIM" to unlock disk and boot into system'
+echo 'run ". FIX" to unlock disk and mount @ '$tmpbase' to fix/debug'
+echo 'run "killall dropbear" to abort'
 echo ""
 )> $dst/etc/motd
 
