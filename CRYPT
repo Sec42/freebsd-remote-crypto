@@ -111,7 +111,7 @@ zfs set readonly=on $root/var/empty
 #zpool set bootfs=$pool/root $pool
 
 if=$(ifconfig -ul ether |awk '{print $1}')
-ip=$(ifconfig $if inet|awk '/inet/{print $2}')
+ip=$(ifconfig -f inet:cidr $if inet|awk '/inet/{print $2;exit}')
 router=$(netstat -nrf inet|awk '/default/{print $2}')
 name=$(hostname)
 [ -z "$name" ] && name="setup"
@@ -121,10 +121,10 @@ cat << EOM >> $base/etc/rc.conf
 # please set hostname and ip configuration
 #
 
-#hostname="$name"
+hostname="$name"
 
-#ifconfig_$if="$ip"
-#defaultrouter="$router"
+ifconfig_$if="$ip"
+defaultrouter="$router"
 # OR
 #ifconfig_$if="DHCP"
 
@@ -132,7 +132,7 @@ zfs_enable="YES"
 sshd_enable="YES"
 sendmail_enable="NONE"
 
-# existing rc.conf
+# existing rc.conf for reference:
 EOM
 [ -f /etc/rc.conf ] && cat /etc/rc.conf|sed 's/^/#/' >> $base/etc/rc.conf
 
